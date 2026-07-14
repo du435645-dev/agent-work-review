@@ -3,7 +3,7 @@
   "$id": "https://github.com/du435645-dev/agent-work-review/schemas/work-summary.schema.json",
   "title": "Agent Work Review Summary",
   "type": "object",
-  "required": ["schema_version", "review_mode", "language", "title", "executive_summary", "outputs"],
+  "required": ["schema_version", "review_mode", "language", "title", "executive_summary", "based_on_candidates_digest", "outputs", "excluded_candidates"],
   "properties": {
     "schema_version": {"const": "1.0"},
     "review_mode": {"enum": ["phase-review", "self-review", "formal-report"]},
@@ -11,6 +11,8 @@
     "title": {"type": "string", "minLength": 1},
     "subtitle": {"type": "string"},
     "executive_summary": {"type": "string", "minLength": 1},
+    "based_on_candidates_digest": {"type": "string", "minLength": 64, "maxLength": 64},
+    "summary_digest": {"type": "string", "minLength": 64, "maxLength": 64},
     "source_agents": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
     "time_range": {"type": "object"},
     "outputs": {
@@ -18,8 +20,9 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["title", "workspace", "evidence_level", "background", "content", "impact", "next_plan", "source_agents", "source_session_ids"],
+        "required": ["candidate_ids", "title", "workspace", "evidence_level", "background", "content", "impact", "next_plan", "source_agents", "source_session_ids"],
         "properties": {
+          "candidate_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
           "title": {"type": "string", "minLength": 1},
           "workspace": {"type": "string", "minLength": 1},
           "evidence_level": {"enum": ["quantified", "qualified", "progress"]},
@@ -32,6 +35,17 @@
           "source_refs": {"type": "array", "items": {"type": "string"}}
         },
         "additionalProperties": true
+      }
+    },
+    "excluded_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["candidate_id", "reason"],
+        "properties": {
+          "candidate_id": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1}
+        }
       }
     }
   },

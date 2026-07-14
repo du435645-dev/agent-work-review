@@ -7,9 +7,11 @@ from datetime import date, datetime
 from pathlib import Path
 
 from .locales import QUANTIFIED_PATTERN, QUANTIFIED_TOKENS, SUMMARY_TEXT
+from .storage import atomic_write_json, atomic_write_text, digest_json
 
 
 LEVEL_ORDER = {"output": 0, "decision": 1, "progress": 2}
+GENERIC_ARTIFACT_NAMES = {"agents.md", "claude.md", "readme.md", "package.json", "pyproject.toml"}
 
 
 def write_jsonl(path: Path, records: list[dict]) -> None:
@@ -49,9 +51,14 @@ def item_date(item: dict) -> date | None:
 def merge_key(item: dict) -> tuple[str, ...]:
     workspace = str(item.get("workspace") or "unknown").casefold()
     artifacts = sorted(str(value).replace("/", "\\").casefold() for value in item.get("artifact_paths", []))
-    if artifacts:
-        return ("artifact", workspace, artifacts[0])
+    specific_artifacts = [value for value in artifacts if value.rsplit("\\", 1)[-1] not in GENERIC_ARTIFACT_NAMES]
+    if specific_artifacts:
+        return ("artifact", workspace, specific_artifacts[0])
     return ("source", str(item.get("agent_type") or "generic").casefold(), str(item.get("session_id") or item.get("title") or "unknown").casefold())
+
+
+def candidate_id(key: tuple[str, ...]) -> str:
+    return f"candidate-{digest_json(list(key))[:16]}"
 
 
 def merge_pair(current: dict, incoming: dict) -> dict:
@@ -60,6 +67,7 @@ def merge_pair(current: dict, incoming: dict) -> dict:
     current["impact_score"] = max(int(current.get("impact_score") or 0), int(incoming.get("impact_score") or 0))
     for field in ("signals", "artifact_paths", "source_refs", "source_session_ids", "source_agents"):
         current[field] = sorted(set([*current.get(field, []), *incoming.get(field, [])]))
+    current["has_mutating_tool"] = bool(current.get("has_mutating_tool") or incoming.get("has_mutating_tool"))
     for field in ("notes", "background", "impact", "next_plan"):
         values = [str(value).strip() for value in (current.get(field), incoming.get(field)) if str(value or "").strip()]
         current[field] = "\n\n".join(dict.fromkeys(values))
@@ -67,7 +75,7 @@ def merge_pair(current: dict, incoming: dict) -> dict:
     return current
 
 
-def merge_home(home: Path, *, person_id: str, start: date | None = None, end: date | None = None) -> dict:
+def merge_home(home: Path, *, person_id: str, start: date | None = None, end: date | None = None, review_dir: Path | None = None) -> dict:
     merged: dict[tuple[str, ...], dict] = {}
     for path in sorted((home / "inbox").rglob("*")):
         if not path.is_file() or path.suffix.lower() not in {".json", ".jsonl"}:
@@ -92,7 +100,8 @@ def merge_home(home: Path, *, person_id: str, start: date | None = None, end: da
             merged[key] = merge_pair(merged[key], item) if key in merged else item
 
     grouped: dict[str, list[dict]] = defaultdict(list)
-    for item in merged.values():
+    for key, item in merged.items():
+        item["candidate_id"] = candidate_id(key)
         grouped[item["workspace"]].append(item)
     workspaces = []
     for workspace in sorted(grouped):
@@ -106,9 +115,10 @@ def merge_home(home: Path, *, person_id: str, start: date | None = None, end: da
         "source_agents": sorted({agent for item in merged.values() for agent in item.get("source_agents", [])}),
         "workspaces": workspaces,
     }
-    output = home / "review" / "candidates.json"
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    result["candidates_digest"] = digest_json(result)
+    output_dir = review_dir or home / "review"
+    output = output_dir / "candidates.json"
+    atomic_write_json(output, result)
     return result
 
 
@@ -132,6 +142,7 @@ def summarize_candidates(candidates: dict, *, scenario: str, language: str) -> d
             has_quantified_evidence = any(token in evidence_text for token in QUANTIFIED_TOKENS) or re.search(QUANTIFIED_PATTERN, evidence_text, re.IGNORECASE)
             evidence = "quantified" if has_quantified_evidence else "qualified" if level in {"output", "decision"} else "progress"
             outputs.append({
+                "candidate_ids": [str(item.get("candidate_id") or "")],
                 "title": str(item.get("title") or "Untitled work item"),
                 "workspace": workspace,
                 "evidence_level": evidence,
@@ -159,12 +170,44 @@ def summarize_candidates(candidates: dict, *, scenario: str, language: str) -> d
     }
 
 
-def write_summary(home: Path, summary: dict) -> tuple[Path, Path]:
-    review = home / "review"
+def audit_candidates(candidates: dict) -> dict:
+    items = [item for group in candidates.get("workspaces", []) for item in group.get("candidates", [])]
+    low_context = []
+    weak_outputs = []
+    decision_only = []
+    for item in items:
+        candidate = str(item.get("candidate_id") or item.get("session_id") or "unknown")
+        if not any(str(item.get(field) or "").strip() for field in ("notes", "background", "impact")):
+            low_context.append(candidate)
+        if item.get("impact_level") == "output" and not item.get("artifact_paths") and not item.get("has_mutating_tool"):
+            weak_outputs.append(candidate)
+        if item.get("impact_level") == "decision" and not item.get("artifact_paths") and not item.get("has_mutating_tool"):
+            decision_only.append(candidate)
+    manual_review = sorted(set([*low_context, *weak_outputs, *decision_only]))
+    return {
+        "candidate_count": len(items),
+        "by_impact_level": {level: sum(1 for item in items if item.get("impact_level") == level) for level in ("output", "decision", "progress")},
+        "source_agents": candidates.get("source_agents", []),
+        "low_context_candidate_ids": low_context,
+        "weak_output_candidate_ids": weak_outputs,
+        "decision_only_candidate_ids": decision_only,
+        "manual_review_candidate_ids": manual_review,
+        "reportable_rate": round((len(items) - len(low_context)) / len(items), 4) if items else 0.0,
+    }
+
+
+def summary_with_digest(summary: dict) -> dict:
+    value = {key: item for key, item in summary.items() if key != "summary_digest"}
+    return {**value, "summary_digest": digest_json(value)}
+
+
+def write_summary(home: Path, summary: dict, *, review_dir: Path | None = None) -> tuple[Path, Path]:
+    review = review_dir or home / "review"
     review.mkdir(parents=True, exist_ok=True)
     json_path = review / "summary.json"
     md_path = review / "summary.md"
-    json_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    summary = summary_with_digest(summary)
+    atomic_write_json(json_path, summary)
     labels = SUMMARY_TEXT[summary.get("language", "en")]
     title = str(summary.get("title") or labels["title"])
     lines = [f"# {title}", ""]
@@ -183,5 +226,5 @@ def write_summary(home: Path, summary: dict) -> tuple[Path, Path]:
             f"- {labels['next']}: {item['next_plan']}",
             "",
         ])
-    md_path.write_text("\n".join(lines), encoding="utf-8")
+    atomic_write_text(md_path, "\n".join(lines))
     return json_path, md_path

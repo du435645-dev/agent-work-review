@@ -36,32 +36,48 @@ class EndToEndTests(unittest.TestCase):
                 }],
             )
             candidates = merge_home(home, person_id=config["person_id"])
-            path = prepare_draft(home, candidates, scenario="phase-review", language="en", title="H1 Review")
+            review_dir = home / "reviews" / "h1"
+            path = prepare_draft(review_dir, candidates, scenario="phase-review", language="en", title="H1 Review")
             draft = read_json(path)
             self.assertIn("executive_summary is required", "\n".join(validate_draft(draft, candidates)))
             self.assertEqual(draft["outputs"][0]["evidence_level"], "quantified")
+            self.assertEqual(draft["outputs"][0]["content"], "")
 
             draft["executive_summary"] = "Built a repeatable reporting workflow and verified its delivery impact."
+            context = draft["outputs"][0]["evidence_context"]
+            draft["outputs"][0].update({
+                "background": context["background"],
+                "content": "Built and delivered the reporting workflow.",
+                "impact": context["impact"],
+                "next_plan": "Expand the validated workflow.",
+            })
             path.write_text(json.dumps(draft, ensure_ascii=False, indent=2), encoding="utf-8")
             self.assertEqual(validate_draft(read_json(path), candidates), [])
-            summary_json, summary_md = save_draft(home, read_json(path), mode="error")
+            summary_json, summary_md, backup = save_draft(review_dir, read_json(path), mode="error", candidates=candidates)
+            self.assertIsNone(backup)
             self.assertEqual(read_json(summary_json)["summary_origin"], "agent-reviewed")
             self.assertIn("## Executive summary", summary_md.read_text(encoding="utf-8"))
             with self.assertRaises(FileExistsError):
-                save_draft(home, read_json(path), mode="error")
-            merged_json, _ = save_draft(home, read_json(path), mode="merge")
+                save_draft(review_dir, read_json(path), mode="error", candidates=candidates)
+            merged_json, _, backup = save_draft(review_dir, read_json(path), mode="merge", candidates=candidates)
+            self.assertIsNotNone(backup)
             self.assertEqual(len(read_json(merged_json)["outputs"]), 1)
 
     def test_draft_rejects_unreviewed_source_identity(self) -> None:
         candidates = {
-            "workspaces": [{"workspace": "demo", "candidates": [{"source_session_ids": ["known-session"]}]}],
+            "candidates_digest": "known-digest",
+            "workspaces": [{"workspace": "demo", "candidates": [{"candidate_id": "candidate-known", "source_agents": ["codex"], "source_session_ids": ["known-session"], "source_refs": ["session.jsonl#turn-1"]}]}],
         }
         draft = {
             "schema_version": "1.0",
+            "review_mode": "phase-review",
             "language": "en",
             "title": "Review",
             "executive_summary": "Summary",
+            "based_on_candidates_digest": "known-digest",
+            "excluded_candidates": [],
             "outputs": [{
+                "candidate_ids": ["candidate-known"],
                 "title": "Unknown",
                 "workspace": "demo",
                 "background": "Background",
@@ -73,14 +89,13 @@ class EndToEndTests(unittest.TestCase):
                 "source_session_ids": ["unknown-session"],
             }],
         }
-        self.assertIn("do not match reviewed candidates", "\n".join(validate_draft(draft, candidates)))
+        errors = "\n".join(validate_draft(draft, candidates))
+        self.assertIn("source_agents are missing reviewed sources", errors)
+        self.assertIn("source_session_ids are missing reviewed sources", errors)
+        self.assertIn("source_refs are missing reviewed sources", errors)
 
     def test_chinese_outputs_survive_cross_platform_packaging(self) -> None:
-        runtime_sources = [
-            ROOT / "src" / "agent_work_review" / "locales.py",
-            ROOT / "src" / "agent_work_review" / "pipeline.py",
-            ROOT / "src" / "agent_work_review" / "renderer.py",
-        ]
+        runtime_sources = list((ROOT / "src" / "agent_work_review").rglob("*.py"))
         for source in runtime_sources:
             self.assertTrue(source.read_bytes().isascii(), f"Runtime source must remain ASCII-safe: {source}")
 

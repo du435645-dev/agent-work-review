@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/du435645-dev/agent-work-review/schemas/review-workspace.schema.json",
+  "title": "Agent Work Review Workspace",
+  "type": "object",
+  "required": ["schema_version", "review_id", "time_range", "review_mode", "language", "title", "state", "created_at", "updated_at"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "review_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"},
+    "time_range": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": ["string", "null"]},
+        "end": {"type": ["string", "null"]}
+      }
+    },
+    "review_mode": {"enum": ["phase-review", "self-review", "formal-report"]},
+    "language": {"enum": ["en", "zh"]},
+    "title": {"type": "string", "minLength": 1},
+    "subtitle": {"type": "string"},
+    "state": {"enum": ["collecting", "reviewing", "drafting", "approved", "rendered", "restored", "migrated", "unreviewed-summary", "unreviewed-rendered"]},
+    "candidates_digest": {"type": "string"},
+    "draft_digest": {"type": "string"},
+    "summary_digest": {"type": "string"},
+    "created_at": {"type": "string"},
+    "updated_at": {"type": "string"}
+  },
+  "additionalProperties": true
+}

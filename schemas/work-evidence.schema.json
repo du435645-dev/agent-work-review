@@ -14,6 +14,7 @@
     "workspace": {"type": "string", "minLength": 1},
     "title": {"type": "string", "minLength": 1},
     "signals": {"type": "array", "items": {"type": "string"}},
+    "has_mutating_tool": {"type": "boolean"},
     "impact_level": {"enum": ["output", "decision", "progress"]},
     "impact_score": {"type": "integer", "minimum": 0},
     "reason": {"type": "string"},

@@ -2,50 +2,33 @@
 
 ## Responsibility split
 
-The CLI collects, normalizes, deduplicates, validates, saves, and renders. The session Agent decides what matters and writes the report.
+The CLI collects completed work turns, normalizes sources, deduplicates candidates, tracks freshness, validates coverage, saves history, and renders HTML. The session Agent decides what matters and writes the report.
 
-## Drafting rules
+## Candidate review
 
-1. Read every selected candidate and its source references before rewriting.
-2. Organize by output or workstream, not by Agent, session, or chat length.
-3. Merge only when candidates share a clear workstream, artifact, or outcome.
-4. Write one overall `executive_summary` that explains the main results and the common thread.
-5. For each output, write background, delivered content, impact, and next plan.
-6. Preserve all supporting `source_agents`, `source_session_ids`, and `source_refs` when combining candidates.
-7. Use `quantified` only when numbers or explicit measured change support the impact.
-8. Use `qualified` for demonstrated but non-numeric impact.
-9. Use `progress` when work is incomplete or impact is not yet observable.
-10. Never turn completed actions into unsupported business outcomes.
+1. Read every candidate and its `evidence_context` and `source_refs`.
+2. Organize by output or workstream, not Agent, session, or chat length.
+3. Merge candidates only when they share an outcome, artifact, or clear workstream.
+4. Preserve every merged candidate ID in the destination output.
+5. Move unused candidates to `excluded_candidates` with a concrete reason.
+6. Import missing manual evidence before drafting instead of inventing an unsupported output.
+
+## Narrative rules
+
+1. Write an `executive_summary` that states the main results and common thread.
+2. Rewrite `background`, `content`, `impact`, and `next_plan`; do not copy the scaffold mechanically.
+3. Use `quantified` only for measured numbers or explicit changes.
+4. Use `qualified` for demonstrated non-numeric impact.
+5. Use `progress` when impact is not yet observable.
+6. Separate completed actions from outcomes and never manufacture business impact.
+7. Preserve all `source_agents`, `source_session_ids`, and `source_refs` represented by the output's `candidate_ids`.
 
 ## Scenario emphasis
 
 - `phase-review`: results, decisions, reusable methods, and next-stage plan.
-- `self-review`: ownership, personal contribution, impact, capability growth, and future goals.
+- `self-review`: ownership, personal contribution, impact, capability growth, and goals.
 - `formal-report`: objective context, delivery, evidence, risks, and planned actions.
 
-## Draft contract
+## Freshness contract
 
-Edit `review/summary.draft.json`. Keep these top-level fields:
-
-- `schema_version`
-- `review_mode`
-- `language`
-- `title`
-- `subtitle`
-- `executive_summary`
-- `source_agents`
-- `time_range`
-- `outputs`
-
-Each output must keep:
-
-- `title`
-- `workspace`
-- `evidence_level`
-- `background`
-- `content`
-- `impact`
-- `next_plan`
-- `source_agents`
-- `source_session_ids`
-- `source_refs`
+Do not edit `based_on_candidates_digest`. If validation reports a stale draft, rerun merge and prepare a new draft. Do not use `--allow-stale` for a normal final report.

@@ -41,6 +41,7 @@ def normalize(raw: dict[str, Any], *, agent: str, person_id: str, source: Path, 
         "workspace": str(raw.get("workspace") or raw.get("cwd") or workspace or source.parent),
         "title": str(raw.get("title") or source.stem),
         "signals": sorted(set(raw.get("signals") or [])),
+        "has_mutating_tool": bool(raw.get("has_mutating_tool", False)),
         "impact_level": level,
         "impact_score": int(raw.get("impact_score") or {"output": 90, "decision": 70, "progress": 50}[level]),
         "reason": str(raw.get("reason") or f"Imported from {agent}."),
@@ -55,7 +56,14 @@ def normalize(raw: dict[str, Any], *, agent: str, person_id: str, source: Path, 
 
 def parse_file(path: Path, *, agent: str, person_id: str, workspace: str | None) -> list[dict]:
     if path.suffix.lower() == ".jsonl":
-        rows = [json.loads(line) for line in path.read_text(encoding="utf-8-sig").splitlines() if line.strip()]
+        rows = []
+        for line in path.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            if not line.strip():
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
         return [normalize(row, agent=agent, person_id=person_id, source=path, index=i, workspace=workspace) for i, row in enumerate(rows)]
     if path.suffix.lower() == ".json":
         document = json.loads(path.read_text(encoding="utf-8-sig"))
@@ -73,7 +81,7 @@ def parse_file(path: Path, *, agent: str, person_id: str, workspace: str | None)
     text = path.read_text(encoding="utf-8-sig", errors="replace")
     title = next((line.lstrip("# ").strip() for line in text.splitlines() if line.startswith("#")), path.stem)
     artifacts = sorted(set(ARTIFACT_RE.findall(text)))
-    level = "output" if artifacts else "decision" if any(word in text.lower() for word in ("decision", "decided", "决定", "结论")) else "progress"
+    level = "output" if artifacts else "decision" if any(word in text.lower() for word in ("decision", "decided", "\u51b3\u5b9a", "\u7ed3\u8bba")) else "progress"
     return [
         normalize(
             {

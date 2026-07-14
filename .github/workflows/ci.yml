@@ -20,5 +20,5 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: work-review --version
       - run: python scripts/verify_installed_draft_workflow.py
-      - run: work-review --home "${{ runner.temp }}/work-review-zh" build --language zh --title "Chinese Work Review"
-      - run: python scripts/verify_chinese_output.py "${{ runner.temp }}/work-review-zh/output/presentation.html"
+      - run: work-review --home "${{ runner.temp }}/work-review-zh" build --start 2026-01-01 --end 2026-06-30 --review-id ci-zh --language zh --title "Chinese Work Review"
+      - run: python scripts/verify_chinese_output.py "${{ runner.temp }}/work-review-zh/reviews/ci-zh/presentation.html"

@@ -1,75 +1,86 @@
 ---
 name: agent-work-review
-description: Aggregate one person's work evidence from Codex, OpenCode, Hermes, WorkBuddy, or exported Markdown/JSON histories; review and deduplicate output-centered candidates; have the current session Agent draft and polish a grounded work-review document; validate and save canonical summary.json/summary.md; and render a standalone HTML presentation. Use for work reviews, retrospectives, self-reviews, promotion narratives, formal reports, or cross-agent history consolidation. Keep all data local.
+description: Create isolated half-year, annual, quarterly, promotion, or custom-range work reviews from Codex, OpenCode, Hermes, WorkBuddy, and Markdown/JSON histories. Extract output- and decision-centered evidence, audit and deduplicate candidates, have the current session Agent write grounded narratives, validate complete candidate coverage and freshness, save versioned summary.json/summary.md, and render a standalone local HTML presentation. Keep all data local.
 ---
 
 # Agent Work Review
 
-Use `work-review` for deterministic collection, state management, validation, and rendering. The current session Agent owns semantic selection, synthesis, and writing. Treat `summary.json` and `summary.md` as canonical; HTML is the only built-in presentation format.
+Use `work-review` for deterministic collection, workspace state, evidence lineage, validation, history, and rendering. The current session Agent owns semantic selection and writing. Treat `summary.json` and `summary.md` as canonical; HTML is the only built-in presentation format.
 
 ## Workflow
 
-1. Inspect local state before changing anything:
+1. List existing reviews, then create or select the exact reporting range. Never reuse a review with a different period.
 
    ```bash
+   work-review list-reviews
+   work-review start --start YYYY-MM-DD --end YYYY-MM-DD --scenario phase-review --language zh --title "Work Review" --review-id <stable-id>
+   work-review use <review-id>
    work-review current
    ```
 
-2. Collect native Codex history and import exports from other Agents:
+2. Collect Codex history for the active range and import exports from other Agents. Codex collection extracts completed user turns, final answers, artifacts, decisions, and measured outcomes; it does not treat read-only shell usage as an output.
 
    ```bash
-   work-review collect --source codex --start YYYY-MM-DD --end YYYY-MM-DD
+   work-review collect --source codex
    work-review import --agent <agent-name> --input <markdown-json-or-jsonl>
    ```
 
-3. Merge evidence, then inspect `review/candidates.json` with the user:
+3. Merge and audit candidates.
 
    ```bash
-   work-review merge --start YYYY-MM-DD --end YYYY-MM-DD
+   work-review merge
+   work-review audit-candidates
    ```
 
-   Keep, exclude, rename, split, or conservatively merge candidates. Prefer outputs and decisions over conversation length.
+   Read `references/value-judgment.md`, then inspect `candidates.json`. Extraction is recall, not final value judgment. Prefer explicit outputs, adopted decisions, measured outcomes, reusable methods, and verified progress over chat length. Review every `manual_review_candidate_id` and exclude advice-only or no-op work unless later evidence shows adoption.
 
-4. Create a local scaffold:
+4. Prepare the evidence scaffold.
 
    ```bash
-   work-review prepare-draft --language <en-or-zh> --scenario <phase-review-or-self-review-or-formal-report> --title "Work Review"
+   work-review prepare-draft
    ```
 
-5. Read `references/drafting-guide.md`, then rewrite `review/summary.draft.json`. Do not leave template prose as final content. Add an executive summary, merge related candidates into output-centered narratives, preserve source IDs, distinguish quantified impact from qualitative impact and progress, and never invent outcomes.
+5. Read `references/drafting-guide.md` and rewrite `summary.draft.json`. Evidence lives under `evidence_context`; final narrative fields start empty and must be written by the session Agent. Group related candidates by output. Preserve `candidate_ids` and source provenance. Put every candidate in exactly one output or `excluded_candidates` with a reason.
 
-6. Validate the Agent-authored draft:
+6. Validate and preview before saving.
 
    ```bash
    work-review validate-draft
+   work-review preview-draft
    ```
 
-7. Show the draft to the user. Before saving, run `work-review current`. If a canonical summary already exists, explicitly agree on `overwrite`, `merge`, or cancel. Then save:
+   Stop if the draft is stale, any candidate is pending, a source is missing, or any narrative remains empty.
+
+7. Show the draft to the user. If a canonical summary exists, explicitly agree on overwrite, merge, or cancel. Save, then verify current state.
 
    ```bash
    work-review save-draft --mode overwrite
+   work-review current
    ```
 
-8. Render only from the saved canonical summary:
+8. Render only from a fresh canonical summary, then verify again.
 
    ```bash
    work-review render-html
+   work-review current
    ```
 
-Use `work-review build` only for an explicitly requested quick, unreviewed scaffold. It is not the default final-report workflow.
+Use `history` and `restore <revision-id>` for recovery. Use `build` only when the user explicitly accepts a quick unreviewed scaffold.
 
 ## Outputs
 
-- `review/candidates.json`: reviewed cross-Agent candidates
-- `review/summary.draft.json`: session Agent working draft
-- `review/summary.json`: validated canonical summary
-- `review/summary.md`: validated human-readable report
-- `output/presentation.html`: standalone HTML presentation
+- `reviews/<review-id>/review.json`: period, mode, state, and lineage
+- `reviews/<review-id>/candidates.json`: deduplicated completed-turn candidates
+- `reviews/<review-id>/summary.draft.json`: Agent writing workspace
+- `reviews/<review-id>/summary.json`: validated canonical summary
+- `reviews/<review-id>/summary.md`: validated report document
+- `reviews/<review-id>/presentation.html`: standalone HTML presentation
+- `reviews/<review-id>/history/`: recoverable prior revisions
 
-## Privacy
+## Boundaries
 
-- Keep evidence and outputs local unless the user explicitly exports them.
+- Keep all evidence and outputs local unless the user explicitly exports them.
 - Never ask for a real name or employee number by default.
-- Never merge another local identity.
-- Never call weekly-report systems or upload raw conversations.
+- Import manual additions as evidence before drafting; do not bypass candidate coverage.
+- Never call weekly-report systems or upload conversations.
 - Do not generate PPTX, PDF, DOCX, or other built-in report formats.

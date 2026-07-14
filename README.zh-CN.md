@@ -6,7 +6,8 @@
 
 ## 输出
 
-- `candidates.json`：跨 Agent 去重后的候选工作项
+- `review.json`：本次汇报的时间范围、状态和内容谱系
+- `candidates.json`：按完成任务提取并跨 Agent 去重后的候选工作项
 - `summary.draft.json`：由当前会话 Agent 总结和润色的工作草稿
 - `summary.json`：机器可消费的核心总结
 - `summary.md`：方便阅读和继续加工的核心总结
@@ -34,19 +35,27 @@ Windows 也可以运行：
 
 ```bash
 work-review init
-work-review collect --source codex --start 2026-01-01 --end 2026-06-30
+work-review start --start 2026-01-01 --end 2026-06-30 --language zh --title "2026年上半年工作总结" --review-id 2026-h1
+work-review collect --source codex
 work-review import --agent other-agent --input ./agent-export.md
-work-review merge --start 2026-01-01 --end 2026-06-30
+work-review merge
+work-review audit-candidates
 work-review current
-work-review prepare-draft --language zh --title "2026年上半年工作总结"
+work-review prepare-draft
 
-# 当前会话 Agent 读取候选证据并润色 review/summary.draft.json
+# 当前会话 Agent 读取 evidence_context，填写四段叙事，并处理所有 candidate_id
 work-review validate-draft
+work-review preview-draft
 work-review save-draft --mode overwrite
 work-review render-html
+work-review current
 ```
 
-这套流程参考周报工具的职责划分：脚本负责读取状态、收集、去重、校验、保存和渲染；当前会话 Agent 负责筛选、归并、总结和润色。正式 `summary.json` 与 `summary.md` 只有在草稿校验通过并明确选择覆盖或合并后才更新。
+半年报、年报、季度报等每次请求都会创建独立的 `reviews/<review-id>/`，通过 `list-reviews` 和 `use` 切换，不会覆盖其他时间范围。
+
+这套流程参考周报工具的职责划分：脚本负责状态、收集、完成任务提取、去重、候选覆盖校验、历史备份和渲染；当前会话 Agent 负责筛选、归并、总结和润色。草稿必须处理全部候选，候选发生变化后旧草稿和 HTML 会显示过期。
+
+自动提取只是召回层，不直接替代价值判断。会话 Agent 会按照内置价值判断指南，把候选区分为值得纳入、需要合并、证据不足或应排除；一般建议、只读排查和没有落地结果的问答不会直接成为最终汇报内容。
 
 `work-review build` 仍可生成快速、未经会话 Agent 润色的脚手架，但不再是正式汇报的默认流程。
 
@@ -54,4 +63,6 @@ work-review render-html
 
 默认数据目录是 `~/.work-review/data`。工具不会上传会话、证据、总结或 HTML 演示文稿。
 
-统一证据协议见 [`schemas/work-evidence.schema.json`](schemas/work-evidence.schema.json)，总结草稿协议见 [`schemas/work-summary.schema.json`](schemas/work-summary.schema.json)。
+v1.1 的旧平铺结果会复制到 `legacy-import` review，原文件不会删除。
+
+统一证据协议见 [`schemas/work-evidence.schema.json`](schemas/work-evidence.schema.json)，总结草稿协议见 [`schemas/work-summary.schema.json`](schemas/work-summary.schema.json)，工作区协议见 [`schemas/review-workspace.schema.json`](schemas/review-workspace.schema.json)。
