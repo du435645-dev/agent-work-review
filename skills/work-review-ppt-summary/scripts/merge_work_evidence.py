@@ -7,6 +7,8 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Iterable
 
+from local_identity import resolve_person_id
+
 
 LEVEL_ORDER = {"output": 0, "decision": 1, "progress": 2}
 
@@ -15,7 +17,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Merge local evidence from multiple Agents into review candidates.")
     parser.add_argument("--input", action="append", default=[])
     parser.add_argument("--input-dir")
-    parser.add_argument("--person-id", required=True)
+    parser.add_argument("--person-id", help="Optional override; otherwise read from the local review config.")
     parser.add_argument("--start")
     parser.add_argument("--end")
     parser.add_argument("--output", required=True)
@@ -120,6 +122,7 @@ def normalize(item: dict[str, Any], person_id: str) -> dict[str, Any]:
 
 def main() -> int:
     args = parse_args()
+    args.person_id = resolve_person_id(args.person_id, args.output)
     start = date.fromisoformat(args.start) if args.start else None
     end = date.fromisoformat(args.end) if args.end else None
     merged: dict[tuple[str, ...], dict[str, Any]] = {}

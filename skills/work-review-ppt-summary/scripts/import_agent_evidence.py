@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from local_identity import resolve_person_id
+
 
 ARTIFACT_RE = re.compile(
     r"([A-Za-z]:\\[^\s]+|(?:Reports|project|SQL|Scripts)[\\/][^\s]+?\.(?:md|html|sql|py|pptx?|json|xlsx?))"
@@ -17,7 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Import an Agent export into the local work-evidence format.")
     parser.add_argument("--input", required=True)
     parser.add_argument("--agent-type", required=True)
-    parser.add_argument("--person-id", required=True)
+    parser.add_argument("--person-id", help="Optional override; otherwise read from the local review config.")
     parser.add_argument("--workspace")
     parser.add_argument("--output", required=True)
     return parser.parse_args()
@@ -111,6 +113,7 @@ def parse_text_file(path: Path, args: argparse.Namespace) -> list[dict[str, Any]
 
 def main() -> int:
     args = parse_args()
+    args.person_id = resolve_person_id(args.person_id, args.output)
     input_path = Path(args.input)
     if not input_path.exists():
         raise SystemExit(f"Input does not exist: {input_path}")

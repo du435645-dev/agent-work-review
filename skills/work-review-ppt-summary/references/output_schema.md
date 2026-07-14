@@ -17,7 +17,7 @@
 └── output/
 ```
 
-The directory is private to one `person_id`. It has no network or 周律 integration.
+The directory is private to one anonymous `person_id`. The initializer generates and persists it automatically unless an explicit override is supplied. It has no network or 周律 integration.
 
 ## Work Evidence
 
@@ -25,7 +25,7 @@ The directory is private to one `person_id`. It has no network or 周律 integra
 
 ```json
 {
-  "person_id": "du-guiyang",
+  "person_id": "local-a1b2c3d4e5f6",
   "agent_type": "opencode",
   "device_id": "local",
   "session_id": "session-123",
@@ -50,7 +50,7 @@ Required identity fields are `person_id`, `agent_type`, and `session_id`. Keep `
 
 ```json
 {
-  "person_id": "du-guiyang",
+  "person_id": "local-a1b2c3d4e5f6",
   "storage_mode": "local-only",
   "time_range": {
     "label": "custom",

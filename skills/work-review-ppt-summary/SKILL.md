@@ -11,7 +11,7 @@ Build a local-only work-review package from one person's Agent histories and wor
 
 - Do not call the 周律 API or reuse 周律 tokens, storage, or drafts.
 - Do not upload raw conversations or review outputs.
-- Keep one `person_id` per local review workspace.
+- Keep one anonymous, stable `person_id` per local review workspace. Generate it automatically unless the user explicitly needs an override.
 - Ignore evidence carrying a different `person_id` during merge.
 - Treat network sync or team aggregation as out of scope unless the user explicitly requests it.
 
@@ -20,10 +20,10 @@ Build a local-only work-review package from one person's Agent histories and wor
 1. Initialize a private local workspace.
 
    ```powershell
-   python -X utf8 scripts/init_local_review.py --root <local-review-root> --person-id <person-id>
+   python -X utf8 scripts/init_local_review.py --root <local-review-root>
    ```
 
-   This creates `inbox/<agent>/`, `review/`, `output/`, and a local-only `config.json`.
+   This creates `inbox/<agent>/`, `review/`, `output/`, and a local-only `config.json`. Reuse the generated anonymous `person_id` automatically; do not ask for a name or employee number by default.
 
 2. Confirm the review scene and time range.
 
@@ -37,13 +37,13 @@ Build a local-only work-review package from one person's Agent histories and wor
    For Codex, use the native collector:
 
    ```powershell
-   python -X utf8 scripts/collect_session_candidates.py --start <YYYY-MM-DD> --end <YYYY-MM-DD> --person-id <person-id> --output <inbox>/codex/candidates.json
+   python -X utf8 scripts/collect_session_candidates.py --start <YYYY-MM-DD> --end <YYYY-MM-DD> --output <inbox>/codex/candidates.json
    ```
 
    For OpenCode, Hermes, WorkBuddy, manual notes, or another Agent, export Markdown, text, JSON, or JSONL and normalize it:
 
    ```powershell
-   python -X utf8 scripts/import_agent_evidence.py --input <export-path> --agent-type <agent> --person-id <person-id> --output <inbox>/<agent>/evidence.jsonl
+   python -X utf8 scripts/import_agent_evidence.py --input <export-path> --agent-type <agent> --output <inbox>/<agent>/evidence.jsonl
    ```
 
    Do not claim native session access for an Agent unless its storage/API has been verified. Use the generic importer as the safe fallback.
@@ -51,7 +51,7 @@ Build a local-only work-review package from one person's Agent histories and wor
 4. Merge all local sources into one candidate list.
 
    ```powershell
-   python -X utf8 scripts/merge_work_evidence.py --input-dir <inbox> --person-id <person-id> --start <YYYY-MM-DD> --end <YYYY-MM-DD> --output <review>/candidates.json
+   python -X utf8 scripts/merge_work_evidence.py --input-dir <inbox> --start <YYYY-MM-DD> --end <YYYY-MM-DD> --output <review>/candidates.json
    ```
 
    Merge exact source identities and shared artifact paths conservatively. Leave uncertain semantic merges for user review.

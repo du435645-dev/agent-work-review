@@ -20,18 +20,20 @@
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\install.ps1 -Target Auto -PersonId "姓名或工号"
+.\install.ps1 -Target Auto
 ```
 
-`Auto` 始终安装通用核心到 `~/.work-review/skills`；检测到 `~/.codex` 时，同时安装 Codex skills 到 `~/.codex/skills`。
+`Auto` 始终安装通用核心到 `~/.work-review/skills`；检测到 `~/.codex` 时，同时安装 Codex skills 到 `~/.codex/skills`。首次安装会自动生成匿名本地身份，例如 `local-a1b2c3d4e5f6`，无需填写姓名或工号。
 
 其他安装模式：
 
 ```powershell
 .\install.ps1 -Target Codex
-.\install.ps1 -Target Generic -PersonId "姓名或工号"
-.\install.ps1 -Target All -PersonId "姓名或工号"
+.\install.ps1 -Target Generic
+.\install.ps1 -Target All
 ```
+
+只有确实需要固定自定义身份时，才使用可选参数 `-PersonId`。同一个本地数据目录一旦初始化，不允许被后续安装静默改成其他身份。
 
 个人数据只保存在 `~/.work-review/data`。不要把该目录复制或提交回本仓库。
 
@@ -59,9 +61,9 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 第一版只有 Codex 支持原生会话扫描。其他 Agent 将会话或工作记录导出为 Markdown、JSON 或 JSONL，再通过通用导入脚本接入。
 
-## 发布到团队私有 Git
+## 发布仓库
 
-仓库验证完成后，可由维护者添加团队私有远端并推送：
+维护者可添加 GitHub 远端并推送：
 
 ```powershell
 git remote add origin <团队私有仓库地址>

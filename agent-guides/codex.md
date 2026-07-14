@@ -10,7 +10,6 @@ Codex 原生采集入口：
 python -X utf8 "$HOME\.codex\skills\work-review-ppt-summary\scripts\collect_session_candidates.py" `
   --start "<YYYY-MM-DD>" `
   --end "<YYYY-MM-DD>" `
-  --person-id "<姓名或工号>" `
   --output "$HOME\.work-review\data\inbox\codex\candidates.json"
 ```
 

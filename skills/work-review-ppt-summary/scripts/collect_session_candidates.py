@@ -9,6 +9,8 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
 
+from local_identity import resolve_person_id
+
 
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 ARTIFACT_RE = re.compile(
@@ -36,7 +38,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--start")
     parser.add_argument("--end")
     parser.add_argument("--now")
-    parser.add_argument("--person-id", default="local-user")
+    parser.add_argument("--person-id", help="Optional override; otherwise read from the local review config.")
     parser.add_argument("--agent-type", default="codex")
     parser.add_argument("--device-id", default="local")
     parser.add_argument("--output", required=True)
@@ -164,6 +166,7 @@ def workspace_sort_key(item: Candidate) -> tuple[int, str]:
 
 def main() -> int:
     args = parse_args()
+    args.person_id = resolve_person_id(args.person_id, args.output)
     label, start, end = resolve_range(args)
     root = Path(args.sessions_root)
     grouped: dict[str, list[Candidate]] = defaultdict(list)

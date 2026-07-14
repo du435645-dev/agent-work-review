@@ -10,7 +10,6 @@
 python -X utf8 "$HOME\.work-review\skills\work-review-ppt-summary\scripts\import_agent_evidence.py" `
   --input "<导出文件或目录>" `
   --agent-type "<agent名称>" `
-  --person-id "<姓名或工号>" `
   --output "$HOME\.work-review\data\inbox\<agent名称>\evidence.jsonl"
 ```
 
@@ -19,7 +18,6 @@ python -X utf8 "$HOME\.work-review\skills\work-review-ppt-summary\scripts\import
 ```powershell
 python -X utf8 "$HOME\.work-review\skills\work-review-ppt-summary\scripts\merge_work_evidence.py" `
   --input-dir "$HOME\.work-review\data\inbox" `
-  --person-id "<姓名或工号>" `
   --start "<YYYY-MM-DD>" `
   --end "<YYYY-MM-DD>" `
   --output "$HOME\.work-review\data\review\candidates.json"

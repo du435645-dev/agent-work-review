@@ -18,7 +18,7 @@ class PipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             local_root = tmp_path / "local-review"
-            candidates_path = tmp_path / "candidates.json"
+            candidates_path = local_root / "inbox" / "codex" / "candidates.json"
             imported_path = local_root / "inbox" / "opencode" / "evidence.jsonl"
             foreign_path = local_root / "inbox" / "manual" / "foreign.jsonl"
             merged_path = local_root / "review" / "candidates.json"
@@ -32,13 +32,17 @@ class PipelineTests(unittest.TestCase):
                 str(SCRIPTS / "init_local_review.py"),
                 "--root",
                 str(local_root),
-                "--person-id",
-                "tester",
             ]
             init_proc = subprocess.run(init_cmd, capture_output=True, text=True)
             self.assertEqual(init_proc.returncode, 0, init_proc.stderr)
             config = json.loads((local_root / "config.json").read_text(encoding="utf-8"))
             self.assertEqual(config["storage_mode"], "local-only")
+            self.assertRegex(config["person_id"], r"^local-[0-9a-f]{12}$")
+            generated_person_id = config["person_id"]
+            second_init_proc = subprocess.run(init_cmd, capture_output=True, text=True)
+            self.assertEqual(second_init_proc.returncode, 0, second_init_proc.stderr)
+            second_config = json.loads((local_root / "config.json").read_text(encoding="utf-8"))
+            self.assertEqual(second_config["person_id"], generated_person_id)
 
             opencode_export = tmp_path / "opencode-export.md"
             opencode_export.write_text(
@@ -54,8 +58,6 @@ class PipelineTests(unittest.TestCase):
                 str(opencode_export),
                 "--agent-type",
                 "opencode",
-                "--person-id",
-                "tester",
                 "--workspace",
                 str(tmp_path / "shared-workspace"),
                 "--output",
@@ -92,8 +94,6 @@ class PipelineTests(unittest.TestCase):
                 "last30d",
                 "--now",
                 "2026-07-06",
-                "--person-id",
-                "tester",
                 "--output",
                 str(candidates_path),
             ]
@@ -101,6 +101,7 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(collect_proc.returncode, 0, collect_proc.stderr)
 
             candidates = json.loads(candidates_path.read_text(encoding="utf-8"))
+            self.assertEqual(candidates["person_id"], generated_person_id)
             self.assertEqual(len(candidates["workspaces"]), 2)
             first_candidate = candidates["workspaces"][0]["candidates"][0]
             self.assertIn(first_candidate["impact_level"], {"output", "decision", "progress"})
@@ -116,8 +117,6 @@ class PipelineTests(unittest.TestCase):
                 str(imported_path),
                 "--input",
                 str(foreign_path),
-                "--person-id",
-                "tester",
                 "--start",
                 "2026-01-01",
                 "--end",
@@ -128,6 +127,7 @@ class PipelineTests(unittest.TestCase):
             merge_proc = subprocess.run(merge_cmd, capture_output=True, text=True)
             self.assertEqual(merge_proc.returncode, 0, merge_proc.stderr)
             merged = json.loads(merged_path.read_text(encoding="utf-8"))
+            self.assertEqual(merged["person_id"], generated_person_id)
             self.assertEqual(merged["storage_mode"], "local-only")
             self.assertEqual(merged["source_agents"], ["codex", "opencode"])
             self.assertFalse(any(item["title"] == "不应混入的工作" for ws in merged["workspaces"] for item in ws["candidates"]))

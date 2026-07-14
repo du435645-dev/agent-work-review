@@ -119,19 +119,21 @@ $manifest = [ordered]@{
 }
 $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $GenericHome "install-manifest.json") -Encoding utf8
 
+$python = Get-Command python -ErrorAction SilentlyContinue
+if (-not $python) {
+    throw "Python is required to initialize local review data. Skills were installed, but data initialization did not run."
+}
+$initializer = Join-Path $GenericSkills "work-review-ppt-summary\scripts\init_local_review.py"
+if (-not (Test-Path -LiteralPath $initializer)) {
+    $initializer = Join-Path $CodexSkills "work-review-ppt-summary\scripts\init_local_review.py"
+}
+$initArgs = @("-X", "utf8", $initializer, "--root", (Join-Path $GenericHome "data"))
 if ($PersonId) {
-    $python = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $python) {
-        throw "Python is required to initialize local review data. Skills were installed, but data initialization did not run."
-    }
-    $initializer = Join-Path $GenericSkills "work-review-ppt-summary\scripts\init_local_review.py"
-    if (-not (Test-Path -LiteralPath $initializer)) {
-        $initializer = Join-Path $CodexSkills "work-review-ppt-summary\scripts\init_local_review.py"
-    }
-    & $python.Source -X utf8 $initializer --root (Join-Path $GenericHome "data") --person-id $PersonId
-    if ($LASTEXITCODE -ne 0) {
-        throw "Local data initialization failed with exit code $LASTEXITCODE."
-    }
+    $initArgs += @("--person-id", $PersonId)
+}
+& $python.Source @initArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "Local data initialization failed with exit code $LASTEXITCODE."
 }
 
 Write-Host "Installation complete. Personal data remains under $GenericHome\data and is never copied into the distribution repository."
