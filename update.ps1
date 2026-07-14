@@ -25,8 +25,16 @@ if (-not $SkipPull -and (Test-Path -LiteralPath $GitDir -PathType Container)) {
     if ($dirty) {
         throw "The distribution repository has local changes. Commit or preserve them before updating."
     }
-    $upstream = & $git.Source -C $RepoRoot rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>$null
-    if ($LASTEXITCODE -eq 0 -and $upstream) {
+    $branch = & $git.Source -C $RepoRoot rev-parse --abbrev-ref HEAD
+    if ($LASTEXITCODE -ne 0 -or -not $branch) {
+        throw "Unable to determine the current Git branch."
+    }
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
+    $remote = & $git.Source -C $RepoRoot config --get "branch.$branch.remote" 2>$null
+    $remoteExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousPreference
+    if ($remoteExitCode -eq 0 -and $remote) {
         & $git.Source -C $RepoRoot pull --ff-only
         if ($LASTEXITCODE -ne 0) {
             throw "git pull --ff-only failed. Existing installed skills were not changed."
