@@ -5,6 +5,8 @@ from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
+from .locales import QUANTIFIED_TOKENS, SUMMARY_TEXT
+
 
 LEVEL_ORDER = {"output": 0, "decision": 1, "progress": 2}
 
@@ -109,36 +111,8 @@ def merge_home(home: Path, *, person_id: str, start: date | None = None, end: da
     return result
 
 
-TEXT = {
-    "en": {
-        "title": "Structured Work Review",
-        "background": "Background",
-        "content": "What was delivered",
-        "impact": "Impact",
-        "next": "Next steps",
-        "default_background": "This work was completed in the {workspace} workstream to move the related objective forward.",
-        "default_output": "Produced a concrete deliverable or reusable artifact.",
-        "default_decision": "Captured a clear decision and the reasoning behind it.",
-        "default_progress": "Completed meaningful progress toward a final deliverable or decision.",
-        "default_next": "Continue validation and refine the material when the workstream advances.",
-    },
-    "zh": {
-        "title": "结构化工作总结",
-        "background": "产出的背景",
-        "content": "产出的内容",
-        "impact": "产出的成效",
-        "next": "后续计划",
-        "default_background": "在 {workspace} 工作线中，为推进相关目标开展了本轮工作。",
-        "default_output": "形成了明确交付或可复用产物。",
-        "default_decision": "沉淀了明确决策及其取舍依据。",
-        "default_progress": "完成了面向最终产出或决策的阶段性推进。",
-        "default_next": "随工作线推进继续补充验证并完善材料。",
-    },
-}
-
-
 def summarize_candidates(candidates: dict, *, scenario: str, language: str) -> dict:
-    labels = TEXT[language]
+    labels = SUMMARY_TEXT[language]
     outputs = []
     for group in candidates.get("workspaces", []):
         workspace = str(group.get("workspace") or "unknown")
@@ -153,7 +127,7 @@ def summarize_candidates(candidates: dict, *, scenario: str, language: str) -> d
             impact = str(item.get("impact") or "").strip()
             if not impact:
                 impact = labels["default_output"] if level == "output" else labels["default_decision"] if level == "decision" else labels["default_progress"]
-            evidence = "quantified" if any(token in (content + impact) for token in ("%", "+", "increase", "decrease", "提升", "下降", "增长")) else "qualified" if level in {"output", "decision"} else "progress"
+            evidence = "quantified" if any(token in (content + impact) for token in QUANTIFIED_TOKENS) else "qualified" if level in {"output", "decision"} else "progress"
             outputs.append({
                 "title": str(item.get("title") or "Untitled work item"),
                 "workspace": workspace,
@@ -183,7 +157,7 @@ def write_summary(home: Path, summary: dict) -> tuple[Path, Path]:
     json_path = review / "summary.json"
     md_path = review / "summary.md"
     json_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    labels = TEXT[summary.get("language", "en")]
+    labels = SUMMARY_TEXT[summary.get("language", "en")]
     lines = [f"# {labels['title']}", ""]
     for item in summary.get("outputs", []):
         lines.extend([

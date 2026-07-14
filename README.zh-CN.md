@@ -38,6 +38,8 @@ work-review import --agent other-agent --input ./agent-export.md
 work-review build --start 2026-01-01 --end 2026-06-30 --language zh --title "2026年上半年工作总结"
 ```
 
+中文输出无需切换到 `--language en`。运行时代码采用 ASCII 安全的本地化资源，生成的 JSON、Markdown 和 HTML 均显式使用 UTF-8；即使某些 Agent 或 Windows shell 默认使用本地代码页，也不会破坏运行时中文文案。
+
 默认数据目录是 `~/.work-review/data`。工具不会上传会话、证据、总结或 HTML 演示文稿。
 
 统一证据协议见 [`schemas/work-evidence.schema.json`](schemas/work-evidence.schema.json)。

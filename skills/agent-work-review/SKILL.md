@@ -32,8 +32,10 @@ Use the cross-platform `work-review` CLI as the deterministic engine. Keep the s
 5. Build the canonical summary and HTML presentation:
 
    ```bash
-   work-review build --start YYYY-MM-DD --end YYYY-MM-DD --language en --title "Work Review"
+   work-review build --start YYYY-MM-DD --end YYYY-MM-DD --language <en-or-zh> --title "Work Review"
    ```
+
+   Match the output language to the user's request. Chinese output is supported directly and does not require an English fallback.
 
 6. Improve `summary.json` or `summary.md` with the user when semantic judgment is needed, then rerun `work-review render-html`. Do not invent outcomes that lack evidence.
 

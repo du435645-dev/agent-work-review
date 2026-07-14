@@ -17,6 +17,42 @@ from agent_work_review.renderer import write_html  # noqa: E402
 
 
 class EndToEndTests(unittest.TestCase):
+    def test_chinese_outputs_survive_cross_platform_packaging(self) -> None:
+        runtime_sources = [
+            ROOT / "src" / "agent_work_review" / "locales.py",
+            ROOT / "src" / "agent_work_review" / "pipeline.py",
+            ROOT / "src" / "agent_work_review" / "renderer.py",
+        ]
+        for source in runtime_sources:
+            self.assertTrue(source.read_bytes().isascii(), f"Runtime source must remain ASCII-safe: {source}")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary) / "home"
+            candidates = {
+                "source_agents": ["codex", "opencode"],
+                "time_range": {"start": "2026-01-01", "end": "2026-06-30"},
+                "workspaces": [{
+                    "workspace": "demo",
+                    "candidates": [{
+                        "title": "\u4e2d\u6587\u5de5\u4f5c\u9879",
+                        "impact_level": "output",
+                        "impact": "\u5de5\u4f5c\u6548\u7387\u63d0\u5347 40%\u3002",
+                        "source_agents": ["codex", "opencode"],
+                    }],
+                }],
+            }
+            summary = summarize_candidates(candidates, scenario="phase-review", language="zh")
+            summary_json, summary_md = write_summary(home, summary)
+            presentation = write_html(summary, home / "output" / "presentation.html", title="\u4e2d\u6587\u5de5\u4f5c\u603b\u7ed3")
+
+            self.assertEqual(summary["summary_structure"], ["\u4ea7\u51fa\u7684\u80cc\u666f", "\u4ea7\u51fa\u7684\u5185\u5bb9", "\u4ea7\u51fa\u7684\u6210\u6548", "\u540e\u7eed\u8ba1\u5212"])
+            self.assertIn("\u4e2d\u6587\u5de5\u4f5c\u9879", summary_json.read_text(encoding="utf-8"))
+            self.assertIn("# \u7ed3\u6784\u5316\u5de5\u4f5c\u603b\u7ed3", summary_md.read_text(encoding="utf-8"))
+            html_text = presentation.read_text(encoding="utf-8")
+            self.assertIn('<meta charset="utf-8">', html_text)
+            self.assertIn("\u4e2d\u6587\u5de5\u4f5c\u603b\u7ed3", html_text)
+            self.assertIn("\u5148\u6c89\u6dc0\u8bc1\u636e", html_text)
+
     def test_multi_agent_review_to_standalone_html(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             home = Path(temporary) / "home"

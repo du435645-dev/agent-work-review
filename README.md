@@ -56,6 +56,14 @@ work-review import --agent my-agent --input ./agent-export.md
 work-review build --start 2026-01-01 --end 2026-06-30 --language en --title "2026 H1 Work Review"
 ```
 
+Chinese output is supported directly:
+
+```bash
+work-review build --start 2026-01-01 --end 2026-06-30 --language zh --title "2026 H1 Work Review"
+```
+
+Runtime source files are ASCII-safe and generated JSON, Markdown, and HTML files are explicitly written as UTF-8. This avoids mojibake when an Agent or Windows shell reads source files using a legacy local code page.
+
 If the installer directory is not on `PATH`, run:
 
 ```bash

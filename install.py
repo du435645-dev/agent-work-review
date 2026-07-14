@@ -87,7 +87,7 @@ def main() -> int:
     runtime_env["WORK_REVIEW_HOME"] = str(PRODUCT_HOME / "data")
     subprocess.run([str(python), "-m", "agent_work_review", "init"], check=True, env=runtime_env)
     manifest = {
-        "version": "1.0.0",
+        "version": "1.0.1",
         "installed_at": datetime.now().astimezone().isoformat(),
         "runtime_python": str(python),
         "launcher": str(launcher),

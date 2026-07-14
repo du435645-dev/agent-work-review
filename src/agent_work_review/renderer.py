@@ -4,33 +4,29 @@ import html
 import json
 from pathlib import Path
 
-
-LABELS = {
-    "en": {"review": "Work Review", "overview": "Overview", "background": "Background", "content": "What was delivered", "impact": "Impact", "next": "Next steps", "sources": "Sources", "close": "Evidence first. Then make the work visible.", "hint": "Arrow keys / swipe to navigate · Esc for index"},
-    "zh": {"review": "工作总结", "overview": "总览", "background": "背景", "content": "产出内容", "impact": "成效", "next": "后续计划", "sources": "来源", "close": "先沉淀证据，再让工作被看见。", "hint": "方向键 / 滑动翻页 · Esc 查看索引"},
-}
+from .locales import PRESENTATION_LABELS
 
 
 def esc(value: object, limit: int = 640) -> str:
     text = " ".join(str(value or "").split())
     if len(text) > limit:
-        text = text[: limit - 1].rstrip() + "…"
+        text = text[: limit - 1].rstrip() + "\u2026"
     return html.escape(text)
 
 
 def render_html(summary: dict, *, title: str, subtitle: str = "") -> str:
     language = summary.get("language", "en")
-    labels = LABELS.get(language, LABELS["en"])
+    labels = PRESENTATION_LABELS.get(language, PRESENTATION_LABELS["en"])
     outputs = summary.get("outputs", [])
     agents = summary.get("source_agents", [])
     slides: list[str] = []
-    slides.append(f'''<section class="slide cover active" data-title="{esc(title)}"><div class="cover-left"><div class="meta">AGENT WORK REVIEW · 1.0</div><h1>{esc(title, 180)}</h1><p>{esc(subtitle or labels['review'], 260)}</p></div><div class="cover-right"><div><span class="big">{len(outputs):02d}</span><span class="caption">OUTPUTS</span></div><div><span class="big">{len(agents):02d}</span><span class="caption">AGENT SOURCES</span></div><div class="agent-list">{esc(' · '.join(agents) or 'manual')}</div></div></section>''')
+    slides.append(f'''<section class="slide cover active" data-title="{esc(title)}"><div class="cover-left"><div class="meta">AGENT WORK REVIEW - 1.0</div><h1>{esc(title, 180)}</h1><p>{esc(subtitle or labels['review'], 260)}</p></div><div class="cover-right"><div><span class="big">{len(outputs):02d}</span><span class="caption">OUTPUTS</span></div><div><span class="big">{len(agents):02d}</span><span class="caption">AGENT SOURCES</span></div><div class="agent-list">{esc(' / '.join(agents) or 'manual')}</div></div></section>''')
     overview_items = "".join(f'<li><span>{index:02d}</span><strong>{esc(item.get("title"), 120)}</strong><small>{esc(item.get("workspace"), 80)}</small></li>' for index, item in enumerate(outputs, 1)) or '<li><span>00</span><strong>No reviewed outputs yet</strong><small>Import evidence and rebuild</small></li>'
     slides.append(f'''<section class="slide" data-title="{esc(labels['overview'])}"><div class="chrome"><span>{esc(labels['overview']).upper()}</span><span>02 / {len(outputs)+3:02d}</span></div><h2>{esc(labels['overview'])}</h2><ol class="overview">{overview_items}</ol></section>''')
     for index, item in enumerate(outputs, 1):
         slide_no = index + 2
-        sources = " · ".join(item.get("source_agents") or ["generic"])
-        slides.append(f'''<section class="slide" data-title="{esc(item.get('title'))}"><div class="chrome"><span>OUTPUT {index:02d}</span><span>{slide_no:02d} / {len(outputs)+3:02d}</span></div><div class="item-head"><div><div class="eyebrow">{esc(item.get('evidence_level')).upper()} · {esc(item.get('workspace'), 100)}</div><h2>{esc(item.get('title'), 180)}</h2></div><div class="source-pill">{esc(sources, 100)}</div></div><div class="quad"><article><label>{esc(labels['background'])}</label><p>{esc(item.get('background'))}</p></article><article><label>{esc(labels['content'])}</label><p>{esc(item.get('content'))}</p></article><article class="accent"><label>{esc(labels['impact'])}</label><p>{esc(item.get('impact'))}</p></article><article><label>{esc(labels['next'])}</label><p>{esc(item.get('next_plan'))}</p></article></div></section>''')
+        sources = " / ".join(item.get("source_agents") or ["generic"])
+        slides.append(f'''<section class="slide" data-title="{esc(item.get('title'))}"><div class="chrome"><span>OUTPUT {index:02d}</span><span>{slide_no:02d} / {len(outputs)+3:02d}</span></div><div class="item-head"><div><div class="eyebrow">{esc(item.get('evidence_level')).upper()} - {esc(item.get('workspace'), 100)}</div><h2>{esc(item.get('title'), 180)}</h2></div><div class="source-pill">{esc(sources, 100)}</div></div><div class="quad"><article><label>{esc(labels['background'])}</label><p>{esc(item.get('background'))}</p></article><article><label>{esc(labels['content'])}</label><p>{esc(item.get('content'))}</p></article><article class="accent"><label>{esc(labels['impact'])}</label><p>{esc(item.get('impact'))}</p></article><article><label>{esc(labels['next'])}</label><p>{esc(item.get('next_plan'))}</p></article></div></section>''')
     slides.append(f'''<section class="slide closing" data-title="End"><div class="meta">AGENT WORK REVIEW</div><h2>{esc(labels['close'], 200)}</h2><div class="rule"></div><p>{esc(title, 180)}</p></section>''')
     slides_json = json.dumps([str(item.get("title") or f"Output {i}") for i, item in enumerate(outputs, 1)], ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
     return f'''<!doctype html><html lang="{language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)}</title><style>
