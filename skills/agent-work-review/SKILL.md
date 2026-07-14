@@ -1,56 +1,75 @@
 ---
 name: agent-work-review
-description: Aggregate one person's work evidence from multiple AI coding agents or exported Markdown/JSON histories, review and deduplicate output-centered candidates, create a reusable structured summary, and render a standalone HTML presentation. Use for work reviews, retrospectives, self-reviews, promotion narratives, or cross-agent history consolidation. Keep all data local and treat summary.json and summary.md as the canonical outputs.
+description: Aggregate one person's work evidence from Codex, OpenCode, Hermes, WorkBuddy, or exported Markdown/JSON histories; review and deduplicate output-centered candidates; have the current session Agent draft and polish a grounded work-review document; validate and save canonical summary.json/summary.md; and render a standalone HTML presentation. Use for work reviews, retrospectives, self-reviews, promotion narratives, formal reports, or cross-agent history consolidation. Keep all data local.
 ---
 
 # Agent Work Review
 
-Use the cross-platform `work-review` CLI as the deterministic engine. Keep the structured summary as the source of truth; HTML is the only built-in presentation format.
+Use `work-review` for deterministic collection, state management, validation, and rendering. The current session Agent owns semantic selection, synthesis, and writing. Treat `summary.json` and `summary.md` as canonical; HTML is the only built-in presentation format.
 
 ## Workflow
 
-1. Initialize local storage:
+1. Inspect local state before changing anything:
 
    ```bash
-   work-review init
+   work-review current
    ```
 
-2. Collect native Codex history when available:
+2. Collect native Codex history and import exports from other Agents:
 
    ```bash
    work-review collect --source codex --start YYYY-MM-DD --end YYYY-MM-DD
-   ```
-
-3. Import exports from any other Agent:
-
-   ```bash
    work-review import --agent <agent-name> --input <markdown-json-or-jsonl>
    ```
 
-4. Merge evidence and inspect `~/.work-review/data/review/candidates.json` with the user. Keep, exclude, rename, split, or merge candidates conservatively.
-
-5. Build the canonical summary and HTML presentation:
+3. Merge evidence, then inspect `review/candidates.json` with the user:
 
    ```bash
-   work-review build --start YYYY-MM-DD --end YYYY-MM-DD --language <en-or-zh> --title "Work Review"
+   work-review merge --start YYYY-MM-DD --end YYYY-MM-DD
    ```
 
-   Match the output language to the user's request. Chinese output is supported directly and does not require an English fallback.
+   Keep, exclude, rename, split, or conservatively merge candidates. Prefer outputs and decisions over conversation length.
 
-6. Improve `summary.json` or `summary.md` with the user when semantic judgment is needed, then rerun `work-review render-html`. Do not invent outcomes that lack evidence.
+4. Create a local scaffold:
+
+   ```bash
+   work-review prepare-draft --language <en-or-zh> --scenario <phase-review-or-self-review-or-formal-report> --title "Work Review"
+   ```
+
+5. Read `references/drafting-guide.md`, then rewrite `review/summary.draft.json`. Do not leave template prose as final content. Add an executive summary, merge related candidates into output-centered narratives, preserve source IDs, distinguish quantified impact from qualitative impact and progress, and never invent outcomes.
+
+6. Validate the Agent-authored draft:
+
+   ```bash
+   work-review validate-draft
+   ```
+
+7. Show the draft to the user. Before saving, run `work-review current`. If a canonical summary already exists, explicitly agree on `overwrite`, `merge`, or cancel. Then save:
+
+   ```bash
+   work-review save-draft --mode overwrite
+   ```
+
+8. Render only from the saved canonical summary:
+
+   ```bash
+   work-review render-html
+   ```
+
+Use `work-review build` only for an explicitly requested quick, unreviewed scaffold. It is not the default final-report workflow.
 
 ## Outputs
 
-- `review/candidates.json`: reviewed cross-agent work candidates
-- `review/summary.json`: canonical machine-readable summary
-- `review/summary.md`: canonical human-readable summary
+- `review/candidates.json`: reviewed cross-Agent candidates
+- `review/summary.draft.json`: session Agent working draft
+- `review/summary.json`: validated canonical summary
+- `review/summary.md`: validated human-readable report
 - `output/presentation.html`: standalone HTML presentation
-
-Do not generate PPTX, PDF, DOCX, or other report formats. Users may transform the canonical summary with their own tools.
 
 ## Privacy
 
-- Keep all evidence local unless the user explicitly exports it.
+- Keep evidence and outputs local unless the user explicitly exports them.
 - Never ask for a real name or employee number by default.
-- Never merge evidence carrying another local identity.
-- Never call unrelated report systems or upload raw conversations.
+- Never merge another local identity.
+- Never call weekly-report systems or upload raw conversations.
+- Do not generate PPTX, PDF, DOCX, or other built-in report formats.

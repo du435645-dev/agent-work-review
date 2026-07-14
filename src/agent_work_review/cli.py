@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import __version__
 from .adapters import collect_codex, import_evidence
+from .drafts import current_state, draft_path, prepare_draft, read_json, save_draft, validate_draft
 from .identity import default_home, initialize_home, load_config
 from .pipeline import append_jsonl, merge_home, summarize_candidates, write_jsonl, write_summary
 from .renderer import write_html
@@ -27,6 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("init", help="Initialize a private local workspace.")
     sub.add_parser("adapters", help="List built-in adapters.")
+    sub.add_parser("current", help="Inspect local candidates, draft, canonical summary, and presentation state.")
 
     collect = sub.add_parser("collect", help="Collect evidence with a native adapter.")
     collect.add_argument("--source", choices=["codex"], required=True)
@@ -46,6 +48,20 @@ def build_parser() -> argparse.ArgumentParser:
     summarize = sub.add_parser("summarize", help="Create summary.json and summary.md from reviewed candidates.")
     summarize.add_argument("--scenario", choices=["phase-review", "self-review", "formal-report"], default="phase-review")
     summarize.add_argument("--language", choices=["en", "zh"], default="en")
+
+    prepare = sub.add_parser("prepare-draft", help="Create a draft scaffold for the session Agent to rewrite and polish.")
+    prepare.add_argument("--scenario", choices=["phase-review", "self-review", "formal-report"], default="phase-review")
+    prepare.add_argument("--language", choices=["en", "zh"], default="en")
+    prepare.add_argument("--title", default="Work Review")
+    prepare.add_argument("--subtitle", default="")
+    prepare.add_argument("--force", action="store_true")
+
+    validate = sub.add_parser("validate-draft", help="Validate an Agent-authored draft against reviewed candidates.")
+    validate.add_argument("--input")
+
+    save = sub.add_parser("save-draft", help="Promote a validated draft to canonical summary.json and summary.md.")
+    save.add_argument("--input")
+    save.add_argument("--mode", choices=["error", "overwrite", "merge"], default="error")
 
     render = sub.add_parser("render-html", help="Create a standalone HTML presentation from summary.json.")
     render.add_argument("--title", default="Work Review")
@@ -76,6 +92,9 @@ def main(argv: list[str] | None = None) -> int:
         print("codex\tnative local session adapter")
         print("generic\tMarkdown/JSON/JSONL adapter for any Agent")
         return 0
+    if args.command == "current":
+        print(json.dumps(current_state(home), ensure_ascii=False, indent=2))
+        return 0
     if args.command == "collect":
         records = collect_codex(Path(args.sessions_root), start=date.fromisoformat(args.start), end=date.fromisoformat(args.end), person_id=person_id)
         output = home / "inbox" / "codex" / "evidence.jsonl"
@@ -99,11 +118,54 @@ def main(argv: list[str] | None = None) -> int:
         paths = write_summary(home, summary)
         print(json.dumps({"summary_json": str(paths[0]), "summary_markdown": str(paths[1])}, ensure_ascii=False))
         return 0
+    if args.command == "prepare-draft":
+        candidates_path = home / "review" / "candidates.json"
+        if not candidates_path.is_file():
+            raise SystemExit("Missing candidates.json. Run merge after collecting or importing evidence.")
+        try:
+            output = prepare_draft(
+                home,
+                read_json(candidates_path),
+                scenario=args.scenario,
+                language=args.language,
+                title=args.title,
+                subtitle=args.subtitle,
+                force=args.force,
+            )
+        except FileExistsError as exc:
+            raise SystemExit(str(exc)) from exc
+        print(str(output))
+        return 0
+    if args.command == "validate-draft":
+        input_path = Path(args.input) if args.input else draft_path(home)
+        candidates_path = home / "review" / "candidates.json"
+        errors = validate_draft(read_json(input_path), read_json(candidates_path) if candidates_path.is_file() else None)
+        if errors:
+            print(json.dumps({"valid": False, "errors": errors}, ensure_ascii=False, indent=2))
+            return 1
+        print(json.dumps({"valid": True, "draft": str(input_path)}, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "save-draft":
+        input_path = Path(args.input) if args.input else draft_path(home)
+        candidates_path = home / "review" / "candidates.json"
+        draft = read_json(input_path)
+        errors = validate_draft(draft, read_json(candidates_path) if candidates_path.is_file() else None)
+        if errors:
+            print(json.dumps({"valid": False, "errors": errors}, ensure_ascii=False, indent=2))
+            return 1
+        try:
+            paths = save_draft(home, draft, mode=args.mode)
+        except FileExistsError as exc:
+            raise SystemExit(str(exc)) from exc
+        print(json.dumps({"summary_json": str(paths[0]), "summary_markdown": str(paths[1])}, ensure_ascii=False, indent=2))
+        return 0
     if args.command == "render-html":
         input_path = Path(args.input) if args.input else home / "review" / "summary.json"
         output_path = Path(args.output) if args.output else home / "output" / "presentation.html"
         summary = json.loads(input_path.read_text(encoding="utf-8-sig"))
-        write_html(summary, output_path, title=args.title, subtitle=args.subtitle)
+        title = args.title if args.title != "Work Review" else str(summary.get("title") or args.title)
+        subtitle = args.subtitle or str(summary.get("subtitle") or "")
+        write_html(summary, output_path, title=title, subtitle=subtitle)
         print(str(output_path))
         return 0
     if args.command == "build":

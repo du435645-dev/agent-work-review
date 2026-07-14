@@ -4,6 +4,7 @@ from __future__ import annotations
 SUMMARY_TEXT = {
     "en": {
         "title": "Structured Work Review",
+        "executive": "Executive summary",
         "background": "Background",
         "content": "What was delivered",
         "impact": "Impact",
@@ -16,6 +17,7 @@ SUMMARY_TEXT = {
     },
     "zh": {
         "title": "\u7ed3\u6784\u5316\u5de5\u4f5c\u603b\u7ed3",
+        "executive": "\u603b\u4f53\u603b\u7ed3",
         "background": "\u4ea7\u51fa\u7684\u80cc\u666f",
         "content": "\u4ea7\u51fa\u7684\u5185\u5bb9",
         "impact": "\u4ea7\u51fa\u7684\u6210\u6548",
@@ -54,3 +56,4 @@ PRESENTATION_LABELS = {
 }
 
 QUANTIFIED_TOKENS = ("%", "+", "increase", "decrease", "\u63d0\u5347", "\u4e0b\u964d", "\u589e\u957f")
+QUANTIFIED_PATTERN = r"(?<![\w])\d+(?:,\d{3})*(?:\.\d+)?\s*(?:reports?|tests?|hours?|days?|items?|\u4efd|\u4e2a|\u6b21|\u5c0f\u65f6|\u5929|\u9879)"

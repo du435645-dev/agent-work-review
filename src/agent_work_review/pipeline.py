@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
-from .locales import QUANTIFIED_TOKENS, SUMMARY_TEXT
+from .locales import QUANTIFIED_PATTERN, QUANTIFIED_TOKENS, SUMMARY_TEXT
 
 
 LEVEL_ORDER = {"output": 0, "decision": 1, "progress": 2}
@@ -127,7 +128,9 @@ def summarize_candidates(candidates: dict, *, scenario: str, language: str) -> d
             impact = str(item.get("impact") or "").strip()
             if not impact:
                 impact = labels["default_output"] if level == "output" else labels["default_decision"] if level == "decision" else labels["default_progress"]
-            evidence = "quantified" if any(token in (content + impact) for token in QUANTIFIED_TOKENS) else "qualified" if level in {"output", "decision"} else "progress"
+            evidence_text = content + impact
+            has_quantified_evidence = any(token in evidence_text for token in QUANTIFIED_TOKENS) or re.search(QUANTIFIED_PATTERN, evidence_text, re.IGNORECASE)
+            evidence = "quantified" if has_quantified_evidence else "qualified" if level in {"output", "decision"} else "progress"
             outputs.append({
                 "title": str(item.get("title") or "Untitled work item"),
                 "workspace": workspace,
@@ -144,6 +147,11 @@ def summarize_candidates(candidates: dict, *, scenario: str, language: str) -> d
         "schema_version": "1.0",
         "review_mode": scenario,
         "language": language,
+        "title": labels["title"],
+        "subtitle": "",
+        "executive_summary": "",
+        "draft_status": "unreviewed",
+        "summary_origin": "deterministic-scaffold",
         "summary_structure": [labels["background"], labels["content"], labels["impact"], labels["next"]],
         "source_agents": candidates.get("source_agents", []),
         "time_range": candidates.get("time_range", {}),
@@ -158,7 +166,14 @@ def write_summary(home: Path, summary: dict) -> tuple[Path, Path]:
     md_path = review / "summary.md"
     json_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     labels = SUMMARY_TEXT[summary.get("language", "en")]
-    lines = [f"# {labels['title']}", ""]
+    title = str(summary.get("title") or labels["title"])
+    lines = [f"# {title}", ""]
+    subtitle = str(summary.get("subtitle") or "").strip()
+    if subtitle:
+        lines.extend([subtitle, ""])
+    executive_summary = str(summary.get("executive_summary") or "").strip()
+    if executive_summary:
+        lines.extend([f"## {labels['executive']}", "", executive_summary, ""])
     for item in summary.get("outputs", []):
         lines.extend([
             f"## {item['title']}",

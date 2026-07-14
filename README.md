@@ -7,6 +7,7 @@ Agent Work Review does not depend on a specific Agent product. Codex has a nativ
 ## What it produces
 
 - `candidates.json`: deduplicated, reviewable work items
+- `summary.draft.json`: working draft written and polished by the current session Agent
 - `summary.json`: canonical machine-readable summary
 - `summary.md`: canonical human-readable summary
 - `presentation.html`: standalone HTML presentation
@@ -52,14 +53,20 @@ work-review collect --source codex --start 2026-01-01 --end 2026-06-30
 # Export from any other Agent as Markdown, JSON, or JSONL
 work-review import --agent my-agent --input ./agent-export.md
 
-# Build the reusable summary and standalone HTML presentation
-work-review build --start 2026-01-01 --end 2026-06-30 --language en --title "2026 H1 Work Review"
+# Merge evidence and prepare an Agent-writing scaffold
+work-review merge --start 2026-01-01 --end 2026-06-30
+work-review prepare-draft --language en --title "2026 H1 Work Review"
+
+# The session Agent rewrites review/summary.draft.json, then validates and saves it
+work-review validate-draft
+work-review save-draft --mode overwrite
+work-review render-html
 ```
 
 Chinese output is supported directly:
 
 ```bash
-work-review build --start 2026-01-01 --end 2026-06-30 --language zh --title "2026 H1 Work Review"
+work-review prepare-draft --language zh --title "2026 H1 Work Review"
 ```
 
 Runtime source files are ASCII-safe and generated JSON, Markdown, and HTML files are explicitly written as UTF-8. This avoids mojibake when an Agent or Windows shell reads source files using a legacy local code page.
@@ -67,7 +74,7 @@ Runtime source files are ASCII-safe and generated JSON, Markdown, and HTML files
 If the installer directory is not on `PATH`, run:
 
 ```bash
-~/.work-review/bin/work-review build --language en --title "Work Review"
+~/.work-review/bin/work-review current
 ```
 
 ## Multi-Agent model
@@ -79,7 +86,9 @@ Agent histories and exports
         -> adapters
         -> evidence.jsonl
         -> deterministic merge
-        -> user review
+        -> user candidate review
+        -> session Agent drafting and polishing
+        -> local draft validation and save
         -> summary.json / summary.md
         -> presentation.html
 ```
@@ -90,6 +99,13 @@ Built-in adapters:
 - `generic`: imports Markdown, JSON, or JSONL from any Agent
 
 Third-party adapters should emit records conforming to [`schemas/work-evidence.schema.json`](schemas/work-evidence.schema.json).
+Agent-authored drafts conform to [`schemas/work-summary.schema.json`](schemas/work-summary.schema.json).
+
+## Draft lifecycle
+
+The workflow follows the same responsibility split as mature weekly-report tooling: deterministic scripts manage state and transport, while the current session Agent writes and polishes the report. `work-review current` inspects local state; `prepare-draft` creates a scaffold; `validate-draft` checks completeness and source grounding; `save-draft` requires an explicit overwrite or merge decision when a canonical summary already exists.
+
+`work-review build` remains available as a quick unreviewed scaffold, but it is not the recommended final-report path.
 
 ## Local-first privacy
 

@@ -1,8 +1,8 @@
 interface:
   display_name: "Agent Work Review"
-  short_description: "Summarize work across multiple Agents and render a local HTML presentation"
+  short_description: "Draft a grounded work review from multiple Agents and render local HTML"
   brand_color: "#1346D8"
-  default_prompt: "Use $agent-work-review to collect or import local work evidence from multiple Agents, review output-centered candidates, create summary.json and summary.md, and render a standalone HTML presentation."
+  default_prompt: "Use $agent-work-review to inspect local state, collect and merge evidence from multiple Agents, draft and polish a grounded report, validate and save summary.json and summary.md, and render a standalone HTML presentation."
 
 policy:
   allow_implicit_invocation: true

@@ -11,12 +11,70 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from agent_work_review.adapters.generic import import_evidence  # noqa: E402
+from agent_work_review.drafts import prepare_draft, read_json, save_draft, validate_draft  # noqa: E402
 from agent_work_review.identity import initialize_home  # noqa: E402
 from agent_work_review.pipeline import append_jsonl, merge_home, summarize_candidates, write_jsonl, write_summary  # noqa: E402
 from agent_work_review.renderer import write_html  # noqa: E402
 
 
 class EndToEndTests(unittest.TestCase):
+    def test_agent_reviewed_draft_lifecycle(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary) / "home"
+            config = initialize_home(home)
+            write_jsonl(
+                home / "inbox" / "codex" / "evidence.jsonl",
+                [{
+                    "schema_version": "1.0",
+                    "person_id": config["person_id"],
+                    "agent_type": "codex",
+                    "session_id": "draft-source-1",
+                    "workspace": "demo",
+                    "title": "Automated reports",
+                    "impact_level": "output",
+                    "impact": "Generated 22 reports.",
+                }],
+            )
+            candidates = merge_home(home, person_id=config["person_id"])
+            path = prepare_draft(home, candidates, scenario="phase-review", language="en", title="H1 Review")
+            draft = read_json(path)
+            self.assertIn("executive_summary is required", "\n".join(validate_draft(draft, candidates)))
+            self.assertEqual(draft["outputs"][0]["evidence_level"], "quantified")
+
+            draft["executive_summary"] = "Built a repeatable reporting workflow and verified its delivery impact."
+            path.write_text(json.dumps(draft, ensure_ascii=False, indent=2), encoding="utf-8")
+            self.assertEqual(validate_draft(read_json(path), candidates), [])
+            summary_json, summary_md = save_draft(home, read_json(path), mode="error")
+            self.assertEqual(read_json(summary_json)["summary_origin"], "agent-reviewed")
+            self.assertIn("## Executive summary", summary_md.read_text(encoding="utf-8"))
+            with self.assertRaises(FileExistsError):
+                save_draft(home, read_json(path), mode="error")
+            merged_json, _ = save_draft(home, read_json(path), mode="merge")
+            self.assertEqual(len(read_json(merged_json)["outputs"]), 1)
+
+    def test_draft_rejects_unreviewed_source_identity(self) -> None:
+        candidates = {
+            "workspaces": [{"workspace": "demo", "candidates": [{"source_session_ids": ["known-session"]}]}],
+        }
+        draft = {
+            "schema_version": "1.0",
+            "language": "en",
+            "title": "Review",
+            "executive_summary": "Summary",
+            "outputs": [{
+                "title": "Unknown",
+                "workspace": "demo",
+                "background": "Background",
+                "content": "Content",
+                "impact": "Impact",
+                "next_plan": "Next",
+                "evidence_level": "qualified",
+                "source_agents": ["manual"],
+                "source_session_ids": ["unknown-session"],
+            }],
+        }
+        self.assertIn("do not match reviewed candidates", "\n".join(validate_draft(draft, candidates)))
+
     def test_chinese_outputs_survive_cross_platform_packaging(self) -> None:
         runtime_sources = [
             ROOT / "src" / "agent_work_review" / "locales.py",
