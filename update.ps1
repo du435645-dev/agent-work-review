@@ -1,56 +1,10 @@
-[CmdletBinding()]
-param(
-    [ValidateSet("Auto", "Codex", "Generic", "All")]
-    [string]$Target = "Auto",
-    [switch]$SkipPull,
-    [string]$CodexHome,
-    [string]$GenericHome
-)
-
-Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-
-$RepoRoot = $PSScriptRoot
-$GitDir = Join-Path $RepoRoot ".git"
-
-if (-not $SkipPull -and (Test-Path -LiteralPath $GitDir -PathType Container)) {
-    $git = Get-Command git -ErrorAction SilentlyContinue
-    if (-not $git) {
-        throw "Git repository detected, but git is not available. Use -SkipPull to update from the current checkout."
-    }
-    $dirty = & $git.Source -C $RepoRoot status --porcelain
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unable to inspect Git worktree."
-    }
-    if ($dirty) {
-        throw "The distribution repository has local changes. Commit or preserve them before updating."
-    }
-    $branch = & $git.Source -C $RepoRoot rev-parse --abbrev-ref HEAD
-    if ($LASTEXITCODE -ne 0 -or -not $branch) {
-        throw "Unable to determine the current Git branch."
-    }
-    $previousPreference = $ErrorActionPreference
-    $ErrorActionPreference = "SilentlyContinue"
-    $remote = & $git.Source -C $RepoRoot config --get "branch.$branch.remote" 2>$null
-    $remoteExitCode = $LASTEXITCODE
-    $ErrorActionPreference = $previousPreference
-    if ($remoteExitCode -eq 0 -and $remote) {
-        & $git.Source -C $RepoRoot pull --ff-only
-        if ($LASTEXITCODE -ne 0) {
-            throw "git pull --ff-only failed. Existing installed skills were not changed."
-        }
-    } else {
-        Write-Host "No Git upstream is configured; updating from the current checkout."
-    }
+$repo = $PSScriptRoot
+if (Test-Path -LiteralPath (Join-Path $repo ".git")) {
+    $dirty = git -C $repo status --porcelain
+    if ($dirty) { throw "The checkout has local changes. Preserve them before updating." }
+    git -C $repo pull --ff-only
+    if ($LASTEXITCODE -ne 0) { throw "git pull --ff-only failed." }
 }
-
-$installParams = @{
-    Target = $Target
-    Force = $true
-}
-if ($CodexHome) { $installParams.CodexHome = $CodexHome }
-if ($GenericHome) { $installParams.GenericHome = $GenericHome }
-
-& (Join-Path $RepoRoot "install.ps1") @installParams
-
-Write-Host "Update complete. Existing personal review data was not modified."
+& (Join-Path $repo "install.ps1") @args
+exit $LASTEXITCODE

@@ -1,73 +1,113 @@
-# 本地述职总结技能分发包
+# Agent Work Review
 
-这个仓库用于在团队内分发两项能力：
+Local-first work evidence aggregation across AI agents, with reusable structured summaries and a standalone HTML presentation.
 
-- `work-review-ppt-summary`：在个人电脑上汇总 Codex、OpenCode、Hermes、WorkBuddy 和人工记录。
-- `guizang-ppt-skill`：把确认后的述职摘要生成为网页 PPT。
+Agent Work Review does not depend on a specific Agent product. Codex has a native local-history adapter; every other Agent can participate through the versioned Markdown/JSON/JSONL evidence interface.
 
-共享的是技能和数据格式，不共享任何同事的会话、工作证据或述职产物。安装和更新脚本不会调用周律接口。
+## What it produces
 
-## 环境要求
+- `candidates.json`: deduplicated, reviewable work items
+- `summary.json`: canonical machine-readable summary
+- `summary.md`: canonical human-readable summary
+- `presentation.html`: standalone HTML presentation
 
-- Windows PowerShell 5.1 或 PowerShell 7
-- Python 3.10 或更高版本
-- Node.js 仅在校验瑞士风网页 PPT 时需要
-- Git 仅在通过仓库拉取更新时需要
+The structured summary is the source of truth. HTML is the only built-in presentation format. Users can transform the summary into any other report format with their own tools.
 
-## 一键安装
+## Install
 
-在 PowerShell 中进入本仓库后执行：
+### Universal local installer
 
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\install.ps1 -Target Auto
+```bash
+git clone https://github.com/du435645-dev/agent-work-review.git
+cd agent-work-review
+python install.py
 ```
 
-`Auto` 始终安装通用核心到 `~/.work-review/skills`；检测到 `~/.codex` 时，同时安装 Codex skills 到 `~/.codex/skills`。首次安装会自动生成匿名本地身份，例如 `local-a1b2c3d4e5f6`，无需填写姓名或工号。
+The installer creates an isolated runtime under `~/.work-review`, initializes private local data, and installs the Codex Skill automatically when Codex is detected.
 
-其他安装模式：
-
-```powershell
-.\install.ps1 -Target Codex
-.\install.ps1 -Target Generic
-.\install.ps1 -Target All
-```
-
-只有确实需要固定自定义身份时，才使用可选参数 `-PersonId`。同一个本地数据目录一旦初始化，不允许被后续安装静默改成其他身份。
-
-个人数据只保存在 `~/.work-review/data`。不要把该目录复制或提交回本仓库。
-
-## 一键更新
+Platform wrappers are also available:
 
 ```powershell
-.\update.ps1 -Target Auto
+.\install.ps1
 ```
 
-如果当前目录是 Git 仓库，更新脚本先执行 `git pull --ff-only`。存在未提交改动时会停止，不会覆盖。旧技能会备份到 `~/.work-review/backups/<时间戳>/`，个人数据不会被修改。
-
-使用 ZIP 分发、没有 `.git` 时，先用新 ZIP 覆盖本分发目录，再执行：
-
-```powershell
-.\update.ps1 -Target Auto -SkipPull
+```bash
+./install.sh
 ```
 
-## Agent 接入
+### Python package
 
-- Codex：读取 `agent-guides/codex.md`
-- OpenCode：读取 `agent-guides/opencode.md`
-- Hermes：读取 `agent-guides/hermes.md`
-- WorkBuddy：读取 `agent-guides/workbuddy.md`
-- 其他 Agent：读取 `agent-guides/generic-agent.md`
-
-第一版只有 Codex 支持原生会话扫描。其他 Agent 将会话或工作记录导出为 Markdown、JSON 或 JSONL，再通过通用导入脚本接入。
-
-## 发布仓库
-
-维护者可添加 GitHub 远端并推送：
-
-```powershell
-git remote add origin <团队私有仓库地址>
-git push -u origin main
+```bash
+pipx install git+https://github.com/du435645-dev/agent-work-review.git
 ```
 
-`guizang-ppt-skill` 来源于 `op7418/guizang-ppt-skill`，其许可证保留在 `skills/guizang-ppt-skill/LICENSE`。
+## Quick start
+
+```bash
+work-review init
+
+# Native Codex history
+work-review collect --source codex --start 2026-01-01 --end 2026-06-30
+
+# Export from any other Agent as Markdown, JSON, or JSONL
+work-review import --agent my-agent --input ./agent-export.md
+
+# Build the reusable summary and standalone HTML presentation
+work-review build --start 2026-01-01 --end 2026-06-30 --language en --title "2026 H1 Work Review"
+```
+
+If the installer directory is not on `PATH`, run:
+
+```bash
+~/.work-review/bin/work-review build --language en --title "Work Review"
+```
+
+## Multi-Agent model
+
+"Multi-Agent" means work history may come from several Agent products. It does not require those Agents to run simultaneously or share credentials.
+
+```text
+Agent histories and exports
+        -> adapters
+        -> evidence.jsonl
+        -> deterministic merge
+        -> user review
+        -> summary.json / summary.md
+        -> presentation.html
+```
+
+Built-in adapters:
+
+- `codex`: reads local Codex JSONL session archives
+- `generic`: imports Markdown, JSON, or JSONL from any Agent
+
+Third-party adapters should emit records conforming to [`schemas/work-evidence.schema.json`](schemas/work-evidence.schema.json).
+
+## Local-first privacy
+
+- No conversation, evidence, summary, or presentation is uploaded.
+- Data is stored under `~/.work-review/data` by default.
+- A random local identity prevents accidental cross-person merges without asking for a real name.
+- Set `WORK_REVIEW_HOME` to use another private data directory.
+
+## Agent integration
+
+The CLI is the product core. Agent-specific Skills or prompts are thin wrappers around it.
+
+- Codex Skill: [`skills/agent-work-review`](skills/agent-work-review)
+- Any other Agent: run the CLI directly or emit the public evidence schema
+
+## Development
+
+```bash
+python -m pip install -e .
+python -m unittest discover -s tests -v
+```
+
+CI runs on Windows, macOS, and Linux with Python 3.10 and 3.12.
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).
+
+Chinese documentation: [`README.zh-CN.md`](README.zh-CN.md).

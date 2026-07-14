@@ -1,8 +1,0 @@
-interface:
-  display_name: "述职复盘 PPT"
-  short_description: "本地汇总多Agent工作记录并生成述职摘要与网页PPT素材"
-  brand_color: "#0F62FE"
-  default_prompt: "Use $work-review-ppt-summary as a local-only aggregator: collect or import work evidence from one or more Agents, review merged candidate outputs, draft a structured recap, then prepare a guizang HTML PPT brief and Markdown speaker notes."
-
-policy:
-  allow_implicit_invocation: true

@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-work-review"
+version = "1.0.0"
+description = "Local-first multi-agent work evidence aggregation, structured review, and HTML presentation generation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "du435645-dev"}]
+keywords = ["ai-agent", "work-review", "retrospective", "html-presentation", "local-first"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Office/Business",
+]
+
+[project.scripts]
+work-review = "agent_work_review.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/du435645-dev/agent-work-review"
+Repository = "https://github.com/du435645-dev/agent-work-review"
+Issues = "https://github.com/du435645-dev/agent-work-review/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

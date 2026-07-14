@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/du435645-dev/agent-work-review/schemas/work-evidence.schema.json",
+  "title": "Agent Work Review Evidence",
+  "type": "object",
+  "required": ["schema_version", "person_id", "agent_type", "session_id", "workspace", "title", "impact_level"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "person_id": {"type": "string", "minLength": 1},
+    "agent_type": {"type": "string", "minLength": 1},
+    "device_id": {"type": "string"},
+    "session_id": {"type": "string", "minLength": 1},
+    "started_at": {"type": "string"},
+    "workspace": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "signals": {"type": "array", "items": {"type": "string"}},
+    "impact_level": {"enum": ["output", "decision", "progress"]},
+    "impact_score": {"type": "integer", "minimum": 0},
+    "reason": {"type": "string"},
+    "artifact_paths": {"type": "array", "items": {"type": "string"}},
+    "source_refs": {"type": "array", "items": {"type": "string"}},
+    "notes": {"type": "string"},
+    "background": {"type": "string"},
+    "impact": {"type": "string"},
+    "next_plan": {"type": "string"}
+  },
+  "additionalProperties": true
+}
